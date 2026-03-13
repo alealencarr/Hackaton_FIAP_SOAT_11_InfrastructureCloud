@@ -9,7 +9,6 @@ terraform {
       version = "~> 3.0"
     }
   }
-
   backend "azurerm" {
   }
 }
@@ -25,9 +24,8 @@ resource "random_string" "suffix" {
 }
 
 resource "azurerm_resource_group" "main" {
-  name     = "rg-fiapx"
+  name     = "rg-fiapx-alealencarr10"
   location = "brazilsouth"
-  tags     = { Project = "FIAP X" }
 }
 
 resource "azurerm_container_registry" "acr" {
@@ -36,7 +34,6 @@ resource "azurerm_container_registry" "acr" {
   location            = azurerm_resource_group.main.location
   sku                 = "Basic"
   admin_enabled       = true
-  tags                = { Project = "FIAP X" }
 }
 
 resource "azurerm_kubernetes_cluster" "aks" {
@@ -54,8 +51,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   identity {
     type = "SystemAssigned"
   }
-
-  tags = { Project = "FIAP X" }
 }
 
 resource "azurerm_role_assignment" "aks_acr" {
@@ -72,14 +67,12 @@ resource "azurerm_mssql_server" "sql" {
   version                      = "12.0"
   administrator_login          = "fiapxadmin"
   administrator_login_password = var.sql_admin_password
-  tags                         = { Project = "FIAP X" }
 }
 
 resource "azurerm_mssql_database" "db" {
   name      = "FiapXDb"
   server_id = azurerm_mssql_server.sql.id
   sku_name  = "Basic"
-  tags      = { Project = "FIAP X" }
 }
 
 resource "azurerm_mssql_firewall_rule" "azure" {
@@ -95,7 +88,6 @@ resource "azurerm_storage_account" "storage" {
   location                 = azurerm_resource_group.main.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  tags                     = { Project = "FIAP X" }
 }
 
 variable "sql_admin_password" {
