@@ -24,15 +24,17 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
     
+    # Atualizado para a v2, que possui melhor gerenciamento de contexto do CLI
     - name: Azure Login
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
-    # CORREÇÃO: Removido o 'if: github.ref == refs/heads/main'
-    # Agora o backend é validado/criado também nos Pull Requests para o 'terraform init' não quebrar
     - name: Create Backend Storage
       run: |
+        # Garante que todo o CLI vai rodar estritamente focado nesta Subscription
+        az account set --subscription ${{ env.ARM_SUBSCRIPTION_ID }}
+        
         echo "1. Criando Resource Group..."
         az group create --name rg-fiapx-tfstate-ale10fx --location brazilsouth
         
