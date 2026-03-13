@@ -1,4 +1,4 @@
-name: Infraestrutura Azure
+name: 🏗️ Infraestrutura Azure
 
 on:
   push:
@@ -15,11 +15,14 @@ env:
 
 jobs:
   terraform:
-    name: Terraform
+    name: 🏗️ Terraform
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
     
     - name: Azure Login
       uses: azure/login@v1
@@ -27,17 +30,14 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
     - name: Create Backend Storage
+      if: github.ref == 'refs/heads/main'
       run: |
-        az group create --name rg-fiapx-tfstate-alealencarr10 --location brazilsouth
-        az storage account create --name fiapxtfstatealealencarr10 --resource-group rg-fiapx-tfstate-alealencarr10 --location brazilsouth --sku Standard_LRS
-        az storage container create --name tfstate --account-name fiapxtfstatealealencarr10 --auth-mode login
-        sleep 15
-    
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+        az group create --name rg-fiapx-tfstate-ale10fx --location brazilsouth || true
+        az storage account create --name fiapxtfstateale10fx --resource-group rg-fiapx-tfstate-ale10fx --location brazilsouth --sku Standard_LRS || true
+        az storage container create --name tfstate --account-name fiapxtfstateale10fx || true
     
     - name: Terraform Init
-      run: terraform init -backend-config="resource_group_name=rg-fiapx-tfstate-alealencarr10" -backend-config="storage_account_name=fiapxtfstatealealencarr10" -backend-config="container_name=tfstate" -backend-config="key=fiapx.tfstate"
+      run: terraform init
     
     - name: Terraform Plan
       run: terraform plan -var="sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" -out=tfplan
@@ -46,12 +46,15 @@ jobs:
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: terraform apply -auto-approve tfplan
     
-    - name: Show Outputs
+    - name: Get Outputs
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: |
-        echo "## Infraestrutura Criada!" >> $GITHUB_STEP_SUMMARY
+        echo "## 🎉 Infraestrutura Criada!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Recurso | Valor |" >> $GITHUB_STEP_SUMMARY
         echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
         echo "| ACR | $(terraform output -raw acr_login_server) |" >> $GITHUB_STEP_SUMMARY
         echo "| AKS | $(terraform output -raw aks_name) |" >> $GITHUB_STEP_SUMMARY
-        echo "| SQL | $(terraform output -raw sql_server_fqdn) |" >> $GITHUB_STEP_SUMMARY
+        echo "| SQL Server | $(terraform output -raw sql_server_fqdn) |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Agora faça merge dos PRs: fiapx-api → fiapx-worker → fiapx-email" >> $GITHUB_STEP_SUMMARY
