@@ -1,74 +1,92 @@
-name: 🏗️ Infraestrutura Azure
+name: "\U0001F3D7️ Infraestrutura Azure"
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 env:
-  ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-  ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+  ARM_CLIENT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+  ARM_CLIENT_SECRET:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
   ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-  ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+  ARM_TENANT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
 
 jobs:
   terraform:
-    name: 🏗️ Terraform
+    name: "\U0001F3D7️ Terraform"
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-    
-    # Atualizado para a v2, que possui melhor gerenciamento de contexto do CLI
-    - name: Azure Login
-      uses: azure/login@v2
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-    
-    - name: Create Backend Storage
-      run: |
-        # Garante que todo o CLI vai rodar estritamente focado nesta Subscription
-        az account set --subscription ${{ env.ARM_SUBSCRIPTION_ID }}
-        
-        echo "1. Criando Resource Group..."
-        az group create --name rg-fiapx-tfstate-ale10fx --location brazilsouth
-        
-        echo "2. Criando Storage Account..."
-        # Removido o '|| true'. Se falhar aqui, o log mostrará o erro real (ex: nome já em uso ou falta de permissão).
-        az storage account create --name fiapxtfstateale10fx --resource-group rg-fiapx-tfstate-ale10fx --location brazilsouth --sku Standard_LRS
-        
-        echo "3. Criando Container..."
-        # Adicionado '--auth-mode login' para usar a credencial do Azure Login
-        az storage container create --name tfstate --account-name fiapxtfstateale10fx --auth-mode login || echo "Container já existe"
-        
-        echo "4. Aguardando propagação dos recursos..."
-        sleep 15
-    
-    - name: Terraform Init
-      run: terraform init
-    
-    - name: Terraform Plan
-      run: terraform plan -var="sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" -out=tfplan
-    
-    # O Apply continua protegido, rodando APENAS na branch main
-    - name: Terraform Apply
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      run: terraform apply -auto-approve tfplan
-    
-    - name: Get Outputs
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      run: |
-        echo "## 🎉 Infraestrutura Criada!" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Recurso | Valor |" >> $GITHUB_STEP_SUMMARY
-        echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
-        echo "| ACR | $(terraform output -raw acr_login_server) |" >> $GITHUB_STEP_SUMMARY
-        echo "| AKS | $(terraform output -raw aks_name) |" >> $GITHUB_STEP_SUMMARY
-        echo "| SQL Server | $(terraform output -raw sql_server_fqdn) |" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Agora faça merge dos PRs: fiapx-api → fiapx-worker → fiapx-email" >> $GITHUB_STEP_SUMMARY
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # ⚠️ PASSO CRÍTICO: forçar a subscription correta
+      - name: Set Subscription
+        run: |
+          echo "🔍 Verificando login..."
+          az account show --output table
+          echo ""
+          echo "🔄 Forçando subscription..."
+          az account set --subscription "${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}"
+          echo ""
+          echo "✅ Subscription ativa:"
+          az account show --query '{name:name, id:id, state:state}' --output table
+
+      - name: Create Backend Storage
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "1. Criando Resource Group do tfstate..."
+          az group create \
+            --name rg-fiapx-tfst-fx2026 \
+            --location brazilsouth \
+            --output none || true
+
+          echo "2. Criando Storage Account do tfstate..."
+          az storage account create \
+            --name fiapxtfstfx2026 \
+            --resource-group rg-fiapx-tfst-fx2026 \
+            --location brazilsouth \
+            --sku Standard_LRS \
+            --min-tls-version TLS1_2 \
+            --output none || true
+
+          echo "3. Criando Container do tfstate..."
+          az storage container create \
+            --name tfstate \
+            --account-name fiapxtfstfx2026 \
+            --auth-mode login \
+            --output none || true
+
+          echo "✅ Backend pronto!"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -var="sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" -out=tfplan
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve tfplan
+
+      - name: Get Outputs
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          echo "## 🎉 Infraestrutura Criada!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Recurso | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ACR | $(terraform output -raw acr_login_server) |" >> $GITHUB_STEP_SUMMARY
+          echo "| AKS | $(terraform output -raw aks_name) |" >> $GITHUB_STEP_SUMMARY
+          echo "| SQL Server | $(terraform output -raw sql_server_fqdn) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Infra pronta!" >> $GITHUB_STEP_SUMMARY
