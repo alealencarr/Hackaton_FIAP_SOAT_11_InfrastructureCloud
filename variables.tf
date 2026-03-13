@@ -1,5 +1,5 @@
 variable "resource_group_name" {
-  default = "rg-fiapx"
+  default = "rg-fiapx-alealencarr10"
 }
 
 variable "location" {
