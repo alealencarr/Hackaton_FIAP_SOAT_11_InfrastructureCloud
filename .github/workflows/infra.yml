@@ -29,21 +29,21 @@ jobs:
     - name: Create Backend Storage
       run: |
         echo "🔨 Criando Resource Group para Terraform State..."
-        az group create --name rg-fiapx-tfstate-alealencarr10 --location brazilsouth || true
+        az group create --name rg-fiapx-tfstate-alealencarr10 --location brazilsouth
         
         echo "🔨 Criando Storage Account..."
         az storage account create \
-          --name fiapxtfstate \
+          --name tfstatealealencarr10 \
           --resource-group rg-fiapx-tfstate-alealencarr10 \
           --location brazilsouth \
           --sku Standard_LRS \
-          --allow-blob-public-access false || true
+          --allow-blob-public-access false
         
         echo "🔨 Criando Container..."
         az storage container create \
           --name tfstate \
-          --account-name fiapxtfstate \
-          --auth-mode login || true
+          --account-name tfstatealealencarr10 \
+          --auth-mode login
         
         echo "⏳ Aguardando propagação..."
         sleep 30

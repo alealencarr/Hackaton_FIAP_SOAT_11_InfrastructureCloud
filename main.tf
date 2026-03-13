@@ -11,8 +11,8 @@ terraform {
   }
 
   backend "azurerm" {
-    resource_group_name  = "rg-fiapx-tfstate"
-    storage_account_name = "rg-fiapx-tfstate-alealencarr10"
+    resource_group_name  = "rg-fiapx-tfstate-alealencarr10"
+    storage_account_name = "tfstatealealencarr10"
     container_name       = "tfstate"
     key                  = "fiapx.tfstate"
   }
