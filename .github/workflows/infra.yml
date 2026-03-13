@@ -21,20 +21,35 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-    
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
     - name: Create Backend Storage
-      if: github.ref == 'refs/heads/main'
       run: |
+        echo "🔨 Criando Resource Group para Terraform State..."
         az group create --name rg-fiapx-tfstate --location brazilsouth || true
-        az storage account create --name fiapxtfstate --resource-group rg-fiapx-tfstate --location brazilsouth --sku Standard_LRS || true
-        az storage container create --name tfstate --account-name fiapxtfstate || true
+        
+        echo "🔨 Criando Storage Account..."
+        az storage account create \
+          --name fiapxtfstate \
+          --resource-group rg-fiapx-tfstate \
+          --location brazilsouth \
+          --sku Standard_LRS \
+          --allow-blob-public-access false || true
+        
+        echo "🔨 Criando Container..."
+        az storage container create \
+          --name tfstate \
+          --account-name fiapxtfstate \
+          --auth-mode login || true
+        
+        echo "⏳ Aguardando propagação..."
+        sleep 30
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
     
     - name: Terraform Init
       run: terraform init
@@ -46,7 +61,7 @@ jobs:
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: terraform apply -auto-approve tfplan
     
-    - name: Get Outputs
+    - name: Show Outputs
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: |
         echo "## 🎉 Infraestrutura Criada!" >> $GITHUB_STEP_SUMMARY
@@ -55,6 +70,6 @@ jobs:
         echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
         echo "| ACR | $(terraform output -raw acr_login_server) |" >> $GITHUB_STEP_SUMMARY
         echo "| AKS | $(terraform output -raw aks_name) |" >> $GITHUB_STEP_SUMMARY
-        echo "| SQL Server | $(terraform output -raw sql_server_fqdn) |" >> $GITHUB_STEP_SUMMARY
+        echo "| SQL | $(terraform output -raw sql_server_fqdn) |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Agora para finalizar o projeto é só subir os PRs: fiapx-api → fiapx-worker → fiapx-email" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Agora faça merge: **fiapx-api** → **fiapx-worker** → **fiapx-email**" >> $GITHUB_STEP_SUMMARY
