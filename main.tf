@@ -67,10 +67,10 @@ resource "azurerm_kubernetes_cluster" "aks" {
   resource_group_name = azurerm_resource_group.main.name
   dns_prefix          = "fiapx${random_string.suffix.result}"
 
-  default_node_pool {
-    name       = "default"
-    node_count = 2
-    vm_size    = "Standard_B2s"
+ default_node_pool {
+    name           = "default"
+    node_count     = 1
+    vm_size        = "Standard_E2s_v3" 
   }
 
   identity {
