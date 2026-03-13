@@ -12,6 +12,8 @@ env:
   ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
   ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
   ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+  STORAGE_ACCOUNT_NAME: "tfstatealesantos2026"
+  RESOURCE_GROUP_TF: "rg-fiapx-tfstate"
 
 jobs:
   terraform:
@@ -28,31 +30,36 @@ jobs:
     
     - name: Create Backend Storage
       run: |
-        echo "🔨 Criando Resource Group para Terraform State..."
-        az group create --name rg-fiapx-tfstate-alealencarr10 --location brazilsouth
+        echo "🔨 Criando Resource Group..."
+        az group create \
+          --name ${{ env.RESOURCE_GROUP_TF }} \
+          --location brazilsouth
         
-        echo "🔨 Criando Storage Account..."
+        echo "🔨 Criando Storage Account: ${{ env.STORAGE_ACCOUNT_NAME }}..."
         az storage account create \
-          --name tfstatealealencarr10 \
-          --resource-group rg-fiapx-tfstate-alealencarr10 \
+          --name ${{ env.STORAGE_ACCOUNT_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP_TF }} \
           --location brazilsouth \
-          --sku Standard_LRS \
-          --allow-blob-public-access false
+          --sku Standard_LRS
         
         echo "🔨 Criando Container..."
         az storage container create \
           --name tfstate \
-          --account-name tfstatealealencarr10 \
+          --account-name ${{ env.STORAGE_ACCOUNT_NAME }} \
           --auth-mode login
         
-        echo "⏳ Aguardando propagação..."
-        sleep 30
+        echo "✅ Backend criado!"
     
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
     
     - name: Terraform Init
-      run: terraform init
+      run: |
+        terraform init \
+          -backend-config="resource_group_name=${{ env.RESOURCE_GROUP_TF }}" \
+          -backend-config="storage_account_name=${{ env.STORAGE_ACCOUNT_NAME }}" \
+          -backend-config="container_name=tfstate" \
+          -backend-config="key=fiapx.tfstate"
     
     - name: Terraform Plan
       run: terraform plan -var="sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" -out=tfplan

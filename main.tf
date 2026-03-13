@@ -11,10 +11,6 @@ terraform {
   }
 
   backend "azurerm" {
-    resource_group_name  = "rg-fiapx-tfstate-alealencarr10"
-    storage_account_name = "tfstatealealencarr10"
-    container_name       = "tfstate"
-    key                  = "fiapx.tfstate"
   }
 }
 
@@ -22,21 +18,18 @@ provider "azurerm" {
   features {}
 }
 
-# Random suffix
 resource "random_string" "suffix" {
   length  = 4
   special = false
   upper   = false
 }
 
-# Resource Group
 resource "azurerm_resource_group" "main" {
-  name     = var.resource_group_name
-  location = var.location
-  tags     = { Project = "FIAP X", Environment = "Production" }
+  name     = "rg-fiapx"
+  location = "brazilsouth"
+  tags     = { Project = "FIAP X" }
 }
 
-# Container Registry
 resource "azurerm_container_registry" "acr" {
   name                = "fiapxacr${random_string.suffix.result}"
   resource_group_name = azurerm_resource_group.main.name
@@ -46,7 +39,6 @@ resource "azurerm_container_registry" "acr" {
   tags                = { Project = "FIAP X" }
 }
 
-# AKS Cluster
 resource "azurerm_kubernetes_cluster" "aks" {
   name                = "aks-fiapx"
   location            = azurerm_resource_group.main.location
@@ -66,7 +58,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   tags = { Project = "FIAP X" }
 }
 
-# ACR Pull permission for AKS
 resource "azurerm_role_assignment" "aks_acr" {
   principal_id                     = azurerm_kubernetes_cluster.aks.kubelet_identity[0].object_id
   role_definition_name             = "AcrPull"
@@ -74,7 +65,6 @@ resource "azurerm_role_assignment" "aks_acr" {
   skip_service_principal_aad_check = true
 }
 
-# SQL Server
 resource "azurerm_mssql_server" "sql" {
   name                         = "fiapx-sql-${random_string.suffix.result}"
   resource_group_name          = azurerm_resource_group.main.name
@@ -85,7 +75,6 @@ resource "azurerm_mssql_server" "sql" {
   tags                         = { Project = "FIAP X" }
 }
 
-# SQL Database
 resource "azurerm_mssql_database" "db" {
   name      = "FiapXDb"
   server_id = azurerm_mssql_server.sql.id
@@ -93,7 +82,6 @@ resource "azurerm_mssql_database" "db" {
   tags      = { Project = "FIAP X" }
 }
 
-# SQL Firewall - Allow Azure
 resource "azurerm_mssql_firewall_rule" "azure" {
   name             = "AllowAzure"
   server_id        = azurerm_mssql_server.sql.id
@@ -101,7 +89,6 @@ resource "azurerm_mssql_firewall_rule" "azure" {
   end_ip_address   = "0.0.0.0"
 }
 
-# Storage Account
 resource "azurerm_storage_account" "storage" {
   name                     = "fiapxstor${random_string.suffix.result}"
   resource_group_name      = azurerm_resource_group.main.name
@@ -111,14 +98,28 @@ resource "azurerm_storage_account" "storage" {
   tags                     = { Project = "FIAP X" }
 }
 
-resource "azurerm_storage_container" "uploads" {
-  name                  = "uploads"
-  storage_account_name  = azurerm_storage_account.storage.name
-  container_access_type = "private"
+variable "sql_admin_password" {
+  sensitive = true
 }
 
-resource "azurerm_storage_container" "outputs" {
-  name                  = "outputs"
-  storage_account_name  = azurerm_storage_account.storage.name
-  container_access_type = "private"
+output "acr_login_server" {
+  value = azurerm_container_registry.acr.login_server
+}
+
+output "acr_admin_username" {
+  value     = azurerm_container_registry.acr.admin_username
+  sensitive = true
+}
+
+output "acr_admin_password" {
+  value     = azurerm_container_registry.acr.admin_password
+  sensitive = true
+}
+
+output "aks_name" {
+  value = azurerm_kubernetes_cluster.aks.name
+}
+
+output "sql_server_fqdn" {
+  value = azurerm_mssql_server.sql.fully_qualified_domain_name
 }
