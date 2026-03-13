@@ -68,7 +68,7 @@ jobs:
 
         az storage account create \
 
-          --name fiapxtfstate \
+          --name fiapxtfstatealealencarr10 \
 
           --resource-group rg-fiapx-tfstate-alealencarr10 \
 
@@ -86,7 +86,7 @@ jobs:
 
           --name tfstate \
 
-          --account-name fiapxtfstate \
+          --account-name fiapxtfstatealealencarr10 \
 
           --auth-mode login || true
 
