@@ -29,12 +29,23 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
+    # CORREÇÃO: Removido o 'if: github.ref == refs/heads/main'
+    # Agora o backend é validado/criado também nos Pull Requests para o 'terraform init' não quebrar
     - name: Create Backend Storage
-      if: github.ref == 'refs/heads/main'
       run: |
-        az group create --name rg-fiapx-tfstate-ale10fx --location brazilsouth || true
-        az storage account create --name fiapxtfstateale10fx --resource-group rg-fiapx-tfstate-ale10fx --location brazilsouth --sku Standard_LRS || true
-        az storage container create --name tfstate --account-name fiapxtfstateale10fx || true
+        echo "1. Criando Resource Group..."
+        az group create --name rg-fiapx-tfstate-ale10fx --location brazilsouth
+        
+        echo "2. Criando Storage Account..."
+        # Removido o '|| true'. Se falhar aqui, o log mostrará o erro real (ex: nome já em uso ou falta de permissão).
+        az storage account create --name fiapxtfstateale10fx --resource-group rg-fiapx-tfstate-ale10fx --location brazilsouth --sku Standard_LRS
+        
+        echo "3. Criando Container..."
+        # Adicionado '--auth-mode login' para usar a credencial do Azure Login
+        az storage container create --name tfstate --account-name fiapxtfstateale10fx --auth-mode login || echo "Container já existe"
+        
+        echo "4. Aguardando propagação dos recursos..."
+        sleep 15
     
     - name: Terraform Init
       run: terraform init
@@ -42,6 +53,7 @@ jobs:
     - name: Terraform Plan
       run: terraform plan -var="sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" -out=tfplan
     
+    # O Apply continua protegido, rodando APENAS na branch main
     - name: Terraform Apply
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: terraform apply -auto-approve tfplan
