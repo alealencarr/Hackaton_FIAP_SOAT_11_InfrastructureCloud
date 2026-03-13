@@ -1,4 +1,4 @@
-# FIAP X - Infraestrutura
+# FIAP X - Infraestrutura base no Azure
 
 Terraform para criar recursos no Azure.
 
